@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+
+<!-- 配置自动扫描包 -->
+<context:component-scan base-package="maosheng"/>
+
+<!-- 引入配置文件 -->
+<bean id="propertyPlaceholderConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+	<property name="location" value="classpath:jdbc.properties"/>
+</bean>
+
+<!-- 数据源配置 -->
+<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+	<property name="user" value="${username}"/>
+	<property name="jdbcUrl" value="${url}"/>
+	<property name="driverClass" value="${driver}"/>
+	<property name="password" value="${password}"/>
+</bean>
+
+<!-- spring和MyBatis完美整合，不需要mybatis的配置映射文件 -->
+<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+	<property name="dataSource" ref="dataSource"/>
+	<!-- 配置conf.xml的扫描 -->
+<!-- 	<property name="configLocation" value="classpath:conf.xml"/> -->
+	<!-- 自动扫描mapping.xml文件 -->        
+	<!--<property name="mapperLocations" value="classpath:com/cn/wolf/mapping/*.mapper.xml"></property>-->        
+	<!--类的别名-->
+	<property name="typeAliasesPackage" value="maosheng.mapping"/>
+	<property name="mapperLocations" value="classpath:maosheng/mapping/*.xml"/>
+</bean>
+<!-- DAO接口所在包名，Spring会自动查找其下的类 -->
+<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+	<property name="basePackage" value="maosheng.dao"/>
+	<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+</bean>
+<!-- 配置sqlSessionTemplate -->
+<bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+	<constructor-arg index="0" ref="sqlSessionFactory"/>
+</bean>
+<!-- 事务管理 -->
+<bean id="dataSourceTransactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+	<property name="dataSource" ref="dataSource"/>
+</bean>
+<!-- 开启注解事务 -->
+<tx:advice id="txAdvice" transaction-manager="dataSourceTransactionManager">
+	<tx:attributes>
+		<tx:method name="*" propagation="REQUIRED" rollback-for="Throwable"/>
+	</tx:attributes>
+</tx:advice>
+<!-- 把事务控制在service层 -->
+<aop:config>
+	<aop:pointcut expression="execution(* maosheng.service.*.*(..))" id="pc"/>
+	<aop:advisor advice-ref="txAdvice" pointcut-ref="pc"/>
+</aop:config>
+</beans>
